@@ -1,3 +1,5 @@
+
+
 add_proto_library(media_info_proto STATIC
     media_info.proto
 )
@@ -18,8 +20,6 @@ add_library(mpd_builder STATIC
     representation.h
     segment_info.h
     simple_mpd_notifier.cc
-    xml_node.cc
-    mpd_params.h
 )
 
 
@@ -38,7 +38,7 @@ target_link_libraries(mpd_builder
     glog
 )
 
-add_library(mpd_mocks MODULE
+add_library(mpd_mocks STATIC
     mock_mpd_builder.cc
     mock_mpd_notifier.cc
 )
@@ -69,3 +69,5 @@ target_link_libraries(mpd_base_unittest
 )
 
 add_test(NAME mpd_base_unittest COMMAND mpd_base_unittest)
+
+add_subdirectory(xml)
