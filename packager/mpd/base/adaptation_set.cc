@@ -8,8 +8,8 @@
 
 #include <cmath>
 
-#include "packager/base/logging.h"
-#include "packager/base/strings/string_number_conversions.h"
+#include "absl/strings/numbers.h"
+#include "glog/logging.h"
 #include "packager/mpd/base/media_info.pb.h"
 #include "packager/mpd/base/mpd_options.h"
 #include "packager/mpd/base/mpd_utils.h"

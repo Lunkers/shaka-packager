@@ -9,7 +9,7 @@
 #include <gtest/gtest.h>
 
 #include "packager/base/files/file_path.h"
-#include "packager/base/files/file_util.h"
+#include "packager/file/file_test_util.h"
 #include "packager/mpd/base/mock_mpd_builder.h"
 #include "packager/mpd/base/mpd_builder.h"
 #include "packager/mpd/base/mpd_options.h"
@@ -45,7 +45,8 @@ class SimpleMpdNotifierTest : public ::testing::Test {
         default_mock_adaptation_set_(new MockAdaptationSet()) {}
 
   void SetUp() override {
-    ASSERT_TRUE(base::CreateTemporaryFile(&temp_file_path_));
+    ASSERT_TRUE(
+        base::CreateTemporaryFile(&temp_file_path_));  // Should this be replace
     empty_mpd_option_.mpd_params.mpd_output = temp_file_path_.AsUTF8Unsafe();
 
     // Three valid media info. The actual data does not matter.
@@ -93,7 +94,7 @@ class SimpleMpdNotifierTest : public ::testing::Test {
   MediaInfo valid_media_info3_;
 
  private:
-  base::FilePath temp_file_path_;
+  std::filesystem::path temp_file_path_;
 };
 
 // Verify NotifyNewContainer() works as expected for VOD.

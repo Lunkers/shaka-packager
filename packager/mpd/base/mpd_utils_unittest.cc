@@ -9,7 +9,7 @@
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "packager/base/strings/string_number_conversions.h"
+#include "absl/strings/numbers.h"
 #include "packager/mpd/base/adaptation_set.h"
 #include "packager/mpd/base/mpd_options.h"
 #include "packager/mpd/test/mpd_builder_test_helper.h"
@@ -179,8 +179,7 @@ TEST_F(MpdUtilsTest, ContentProtectionPlayReadyCenc) {
         "98404286AB92E65BE0885F9500000001"
         "11223344556677889900AABBCCDDEEFF"
         "0000000430313233");
-    std::vector<uint8_t> pssh;
-    base::HexStringToBytes(pssh_str, &pssh);
+    std::vector<uint8_t> pssh = absl::HexStringToBytes(pssh_str);
 
     const char kMediaInfoWithContentProtection[] =
         "video_info {"
@@ -219,10 +218,12 @@ TEST_F(MpdUtilsTest, ContentProtectionPlayReadyCenc) {
         "  <ContentProtection"
         "      schemeIdUri='urn:uuid:9a04f079-9840-4286-ab92-e65be0885f95'>"
         "    <cenc:pssh>"
-        "AAAAOHBzc2gBAAAAmgTweZhAQoarkuZb4IhflQAAAAERIjNEVWZ3iJkAqrvM3e7/AAAABDAxMjM="
+        "AAAAOHBzc2gBAAAAmgTweZhAQoarkuZb4IhflQAAAAERIjNEVWZ3iJkAqrvM3e7/"
+        "AAAABDAxMjM="
         "    </cenc:pssh>"
         "  </ContentProtection>"
-        "  <Representation id='0' bandwidth='0' codecs='avc1' mimeType='video/mp4'/>"
+        "  <Representation id='0' bandwidth='0' codecs='avc1' "
+        "mimeType='video/mp4'/>"
         "</AdaptationSet>";
 
     EXPECT_THAT(adaptation_set_.GetXml(), XmlNodeEqual(kExpectedOutput));

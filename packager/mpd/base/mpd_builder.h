@@ -13,13 +13,13 @@
 
 #include <libxml/tree.h>
 
+#include <chrono>
 #include <list>
 #include <memory>
+#include <optional>
 #include <string>
 
-#include "packager/base/compiler_specific.h"
-#include "packager/base/optional.h"
-#include "packager/base/time/clock.h"
+#include "packager/macros.h"
 #include "packager/mpd/base/mpd_options.h"
 #include "packager/mpd/base/xml/xml_node.h"
 
@@ -85,7 +85,7 @@ class MpdBuilder {
   // Returns the document pointer to the MPD. This must be freed by the caller
   // using appropriate xmlDocPtr freeing function.
   // On failure, this returns NULL.
-  base::Optional<xml::XmlNode> GenerateMpd();
+  std::optional<xml::XmlNode> GenerateMpd();
 
   // Set MPD attributes common to all profiles. Uses non-zero |mpd_options_| to
   // set attributes for the MPD.

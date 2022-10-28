@@ -6,12 +6,11 @@
 
 #include "packager/mpd/base/representation.h"
 
-#include <gflags/gflags.h>
-
 #include <algorithm>
 
-#include "packager/base/logging.h"
-#include "packager/base/strings/stringprintf.h"
+#include "absl/flags/flag.h"
+#include "absl/strings/str_format.h"
+#include "glog/logging.h"
 #include "packager/file/file.h"
 #include "packager/media/base/muxer_util.h"
 #include "packager/mpd/base/mpd_options.h"
@@ -249,7 +248,7 @@ const MediaInfo& Representation::GetMediaInfo() const {
 // AddVideoInfo() (possibly adds FramePacking elements), AddAudioInfo() (Adds
 // AudioChannelConfig elements), AddContentProtectionElements*(), and
 // AddVODOnlyInfo() (Adds segment info).
-base::Optional<xml::XmlNode> Representation::GetXml() {
+std::optional<xml::XmlNode> Representation::GetXml() {
   if (!HasRequiredMediaInfoFields()) {
     LOG(ERROR) << "MediaInfo missing required fields.";
     return base::nullopt;
@@ -567,24 +566,24 @@ std::string Representation::GetTextMimeType() const {
 }
 
 std::string Representation::RepresentationAsString() const {
-  std::string s = base::StringPrintf("Representation (id=%d,", id_);
+  std::string s = absl::StrFormat("Representation (id=%d,", id_);
   if (media_info_.has_video_info()) {
     const MediaInfo_VideoInfo& video_info = media_info_.video_info();
-    base::StringAppendF(&s, "codec='%s',width=%d,height=%d",
-                        video_info.codec().c_str(), video_info.width(),
-                        video_info.height());
+    absl::StrAppendFormat(&s, "codec='%s',width=%d,height=%d",
+                          video_info.codec().c_str(), video_info.width(),
+                          video_info.height());
   } else if (media_info_.has_audio_info()) {
     const MediaInfo_AudioInfo& audio_info = media_info_.audio_info();
-    base::StringAppendF(
+    absl::StrAppendFormat(
         &s, "codec='%s',frequency=%d,language='%s'", audio_info.codec().c_str(),
         audio_info.sampling_frequency(), audio_info.language().c_str());
   } else if (media_info_.has_text_info()) {
     const MediaInfo_TextInfo& text_info = media_info_.text_info();
-    base::StringAppendF(&s, "codec='%s',language='%s'",
-                        text_info.codec().c_str(),
-                        text_info.language().c_str());
+    absl::StrAppendFormat(&s, "codec='%s',language='%s'",
+                          text_info.codec().c_str(),
+                          text_info.language().c_str());
   }
-  base::StringAppendF(&s, ")");
+  absl::StrAppendFormat(&s, ")");
   return s;
 }
 

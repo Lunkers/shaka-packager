@@ -7,13 +7,13 @@
 #include "packager/mpd/base/mpd_builder.h"
 
 #include <algorithm>
+#include <optional>
 
+#include "absl/strings/numbers.h"
+#include "absl/strings/str_format.h"
+#include "absl/synchronization/mutex.h"
+#include "glog/logging.h"
 #include "packager/base/files/file_path.h"
-#include "packager/base/logging.h"
-#include "packager/base/optional.h"
-#include "packager/base/strings/string_number_conversions.h"
-#include "packager/base/strings/stringprintf.h"
-#include "packager/base/synchronization/lock.h"
 #include "packager/base/time/default_clock.h"
 #include "packager/base/time/time.h"
 #include "packager/media/base/rcheck.h"
@@ -25,7 +25,6 @@
 
 namespace shaka {
 
-using base::FilePath;
 using xml::XmlNode;
 
 namespace {
@@ -63,7 +62,7 @@ bool AddMpdNameSpaceInfo(XmlNode* mpd) {
     CHECK(iter != uris.end()) << " unexpected namespace " << namespace_name;
 
     RCHECK(mpd->SetStringAttribute(
-        base::StringPrintf("xmlns:%s", namespace_name.c_str()).c_str(),
+        absl::StrFormat("xmlns:%s", namespace_name.c_str()).c_str(),
         iter->second));
   }
   return true;
@@ -95,9 +94,10 @@ bool SetIfPositive(const char* attr_name, double value, XmlNode* mpd) {
 }
 
 std::string MakePathRelative(const std::string& media_path,
-                             const FilePath& parent_path) {
-  FilePath relative_path;
-  const FilePath child_path = FilePath::FromUTF8Unsafe(media_path);
+                             const std::filesystem::path& parent_path) {
+  std::filesystem::path relative_path;
+  const std::filesystem::path child_path(media_path);
+  // TODO: figure out how to do this
   const bool is_child =
       parent_path.AppendRelativePath(child_path, &relative_path);
   if (!is_child)
@@ -109,7 +109,7 @@ std::string MakePathRelative(const std::string& media_path,
 class LibXmlInitializer {
  public:
   LibXmlInitializer() : initialized_(false) {
-    base::AutoLock lock(lock_);
+    absl::MutexLock lock(&mutex_);
     if (!initialized_) {
       xmlInitParser();
       initialized_ = true;
@@ -117,7 +117,7 @@ class LibXmlInitializer {
   }
 
   ~LibXmlInitializer() {
-    base::AutoLock lock(lock_);
+    absl::MutexLock lock(&mutex_);
     if (initialized_) {
       xmlCleanupParser();
       initialized_ = false;
@@ -125,8 +125,8 @@ class LibXmlInitializer {
   }
 
  private:
-  base::Lock lock_;
-  bool initialized_;
+  absl::Mutex mutex_;
+  bool initialized_ GUARDED_BY(mutex_);
 
   DISALLOW_COPY_AND_ASSIGN(LibXmlInitializer);
 };
@@ -166,15 +166,14 @@ bool MpdBuilder::ToString(std::string* output) {
 
   std::string version = GetPackagerVersion();
   if (!version.empty()) {
-    version =
-        base::StringPrintf("Generated with %s version %s",
-                           GetPackagerProjectUrl().c_str(), version.c_str());
+    version = absl::StrFormat("Generated with %s version %s",
+                              GetPackagerProjectUrl().c_str(), version.c_str());
   }
   *output = mpd->ToString(version);
   return true;
 }
 
-base::Optional<xml::XmlNode> MpdBuilder::GenerateMpd() {
+std::optional<xml::XmlNode> MpdBuilder::GenerateMpd() {
   XmlNode mpd("MPD");
 
   // Add baseurls to MPD.
@@ -381,8 +380,8 @@ void MpdBuilder::UpdatePeriodDurationAndPresentationTimestamp() {
       }
     }
 
-    base::Optional<double> earliest_start_time;
-    base::Optional<double> latest_end_time;
+    std::optional<double> earliest_start_time;
+    std::optional<double> latest_end_time;
     // The timestamps are based on Video Representations if exist.
     const auto& representations = video_representations.size() > 0
                                       ? video_representations
@@ -421,10 +420,8 @@ void MpdBuilder::MakePathsRelativeToMpd(const std::string& mpd_path,
                                   : mpd_path;
 
   if (!mpd_file_path.empty()) {
-    const FilePath mpd_dir(FilePath::FromUTF8Unsafe(mpd_file_path)
-                               .DirName()
-                               .AsEndingWithSeparator());
-    if (!mpd_dir.empty()) {
+    const std::filesystem::path mpd_dir(mpd_file_path)
+        .parent_path() if (!mpd_dir.empty()) {
       if (media_info->has_media_file_name()) {
         media_info->set_media_file_url(
             MakePathRelative(media_info->media_file_name(), mpd_dir));
