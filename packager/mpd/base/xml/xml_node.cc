@@ -6,33 +6,38 @@
 
 #include "packager/mpd/base/xml/xml_node.h"
 
-#include <gflags/gflags.h>
 #include <libxml/tree.h>
 
+#include <glog/logging.h>
 #include <cmath>
 #include <limits>
 #include <set>
 
-#include "packager/base/logging.h"
-#include "packager/base/macros.h"
-#include "packager/base/strings/string_number_conversions.h"
-#include "packager/base/sys_byteorder.h"
+#include "absl/base/internal/endian.h"
+#include "absl/flags/declare.h"
+#include "absl/flags/flag.h"
+#include "absl/strings/numbers.h"
+#include "absl/strings/escaping.h"
+#include "absl/strings/str_format.h"
+#include "packager/macros.h"
 #include "packager/media/base/rcheck.h"
 #include "packager/mpd/base/media_info.pb.h"
 #include "packager/mpd/base/mpd_utils.h"
 #include "packager/mpd/base/segment_info.h"
 #include "packager/mpd/base/xml/scoped_xml_ptr.h"
 
-DEFINE_bool(segment_template_constant_duration,
-            false,
-            "Generates SegmentTemplate@duration if all segments except the "
-            "last one has the same duration if this flag is set to true.");
+ABSL_FLAG(bool,
+          segment_template_constant_duration,
+          false,
+          "Generates SegmentTemplate@duration if all segments except the "
+          "last one has the same duration if this flag is set to true.");
 
-DEFINE_bool(dash_add_last_segment_number_when_needed,
-            false,
-            "Adds a Supplemental Descriptor with @schemeIdUri "
-            "set to http://dashif.org/guidelines/last-segment-number with "
-            "the @value set to the last segment number.");
+ABSL_FLAG(bool,
+          dash_add_last_segment_number_when_needed,
+          false,
+          "Adds a Supplemental Descriptor with @schemeIdUri "
+          "set to http://dashif.org/guidelines/last-segment-number with "
+          "the @value set to the last segment number.");
 
 namespace shaka {
 
@@ -45,8 +50,7 @@ const char kEC3Codec[] = "ec-3";
 const char kAC4Codec[] = "ac-4";
 
 std::string RangeToString(const Range& range) {
-  return base::Uint64ToString(range.begin()) + "-" +
-         base::Uint64ToString(range.end());
+  return absl::StrFormat("%d-%d",range.begin(), range.end());
 }
 
 // Check if segments are continuous and all segments except the last one are of
@@ -192,14 +196,14 @@ bool XmlNode::SetIntegerAttribute(const std::string& attribute_name,
                                   uint64_t number) {
   DCHECK(impl_->node);
   return xmlSetProp(impl_->node.get(), BAD_CAST attribute_name.c_str(),
-                    BAD_CAST(base::Uint64ToString(number).c_str())) != nullptr;
+                    BAD_CAST(absl::StrFormat("%d",number).c_str())) != nullptr;
 }
 
 bool XmlNode::SetFloatingPointAttribute(const std::string& attribute_name,
                                         double number) {
   DCHECK(impl_->node);
   return xmlSetProp(impl_->node.get(), BAD_CAST attribute_name.c_str(),
-                    BAD_CAST(base::DoubleToString(number).c_str())) != nullptr;
+                    BAD_CAST(absl::StrFormat("%d",number).c_str())) != nullptr;
 }
 
 bool XmlNode::SetId(uint32_t id) {
@@ -345,9 +349,9 @@ bool RepresentationXmlNode::AddVideoInfo(const VideoInfo& video_info,
   }
 
   if (video_info.has_pixel_width() && video_info.has_pixel_height()) {
-    RCHECK(SetStringAttribute(
-        "sar", base::IntToString(video_info.pixel_width()) + ":" +
-                   base::IntToString(video_info.pixel_height())));
+    RCHECK(SetStringAttribute("sar",
+                              absl::StrFormat("%d:%d", video_info.pixel_width(),
+                                              video_info.pixel_height())));
   }
 
   if (set_width)
@@ -355,9 +359,9 @@ bool RepresentationXmlNode::AddVideoInfo(const VideoInfo& video_info,
   if (set_height)
     RCHECK(SetIntegerAttribute("height", video_info.height()));
   if (set_frame_rate) {
-    RCHECK(SetStringAttribute(
-        "frameRate", base::IntToString(video_info.time_scale()) + "/" +
-                         base::IntToString(video_info.frame_duration())));
+    RCHECK(SetStringAttribute("frameRate",
+                              absl::StrFormat("%d/%d", video_info.time_scale(),
+                                              video_info.frame_duration())));
   }
 
   if (video_info.has_playback_rate()) {
@@ -532,30 +536,30 @@ bool RepresentationXmlNode::AddAudioChannelInfo(const AudioInfo& audio_info) {
     const uint32_t ec3_channel_mpeg_value = codec_data.channel_mpeg_value();
     const uint32_t NO_MAPPING = 0xFFFFFFFF;
     if (ec3_channel_mpeg_value == NO_MAPPING) {
-      // Convert EC3 channel map into string of hexadecimal digits. Spec: DASH-IF
-      // Interoperability Points v3.0 9.2.1.2.
+      // Convert EC3 channel map into string of hexadecimal digits. Spec:
+      // DASH-IF Interoperability Points v3.0 9.2.1.2.
       const uint16_t ec3_channel_map =
-        base::HostToNet16(codec_data.channel_mask());
+          base::HostToNet16(codec_data.channel_mask());
       audio_channel_config_value =
-        base::HexEncode(&ec3_channel_map, sizeof(ec3_channel_map));
+          absl::BytesToHexString(&ec3_channel_map);
       audio_channel_config_scheme =
-        "tag:dolby.com,2014:dash:audio_channel_configuration:2011";
+          "tag:dolby.com,2014:dash:audio_channel_configuration:2011";
     } else {
       // Calculate EC3 channel configuration descriptor value with MPEG scheme.
       // Spec: ETSI TS 102 366 V1.4.1 Digital Audio Compression
       // (AC-3, Enhanced AC-3) I.1.2.
-      audio_channel_config_value = base::UintToString(ec3_channel_mpeg_value);
+      audio_channel_config_value = absl::StrFormat("%d", ec3_channel_mpeg_value);
       audio_channel_config_scheme = "urn:mpeg:mpegB:cicp:ChannelConfiguration";
     }
-    bool ret = AddDescriptor("AudioChannelConfiguration",
-                             audio_channel_config_scheme,
-                             audio_channel_config_value);
+    bool ret =
+        AddDescriptor("AudioChannelConfiguration", audio_channel_config_scheme,
+                      audio_channel_config_value);
     // Dolby Digital Plus JOC descriptor. Spec: ETSI TS 103 420 v1.2.1
     // Backwards-compatible object audio carriage using Enhanced AC-3 Standard
     // D.2.2.
     if (codec_data.ec3_joc_complexity() != 0) {
       std::string ec3_joc_complexity =
-        base::UintToString(codec_data.ec3_joc_complexity());
+          base::UintToString(codec_data.ec3_joc_complexity());
       ret &= AddDescriptor("SupplementalProperty",
                            "tag:dolby.com,2018:dash:EC3_ExtensionType:2018",
                            "JOC");
@@ -578,23 +582,23 @@ bool RepresentationXmlNode::AddAudioChannelInfo(const AudioInfo& audio_info) {
       // Audio Compression (AC-4) Standard; Part 2: Immersive and personalized
       // audio G.3.1.
       const uint32_t ac4_channel_mask =
-        base::HostToNet32(codec_data.channel_mask() << 8);
+          absl::big_endian::FromHost32(codec_data.channel_mask() << 8);
       audio_channel_config_value =
-        base::HexEncode(&ac4_channel_mask, sizeof(ac4_channel_mask) - 1);
+          absl::BytesToHexString(&ac4_channel_mask);
       // Note that the channel config schemes for EC-3 and AC-4 are different.
       // See https://github.com/Dash-Industry-Forum/DASH-IF-IOP/issues/268.
       audio_channel_config_scheme =
-        "tag:dolby.com,2015:dash:audio_channel_configuration:2015";
+          "tag:dolby.com,2015:dash:audio_channel_configuration:2015";
     } else {
       // Calculate AC-4 channel configuration descriptor value with MPEG scheme.
-      // Spec: ETSI TS 103 190-2 V1.2.1 Digital Audio Compression (AC-4) Standard;
-      // Part 2: Immersive and personalized audio G.3.2.
+      // Spec: ETSI TS 103 190-2 V1.2.1 Digital Audio Compression (AC-4)
+      // Standard; Part 2: Immersive and personalized audio G.3.2.
       audio_channel_config_value = base::UintToString(ac4_channel_mpeg_value);
       audio_channel_config_scheme = "urn:mpeg:mpegB:cicp:ChannelConfiguration";
     }
-    bool ret = AddDescriptor("AudioChannelConfiguration",
-                             audio_channel_config_scheme,
-                             audio_channel_config_value);
+    bool ret =
+        AddDescriptor("AudioChannelConfiguration", audio_channel_config_scheme,
+                      audio_channel_config_value);
     if (ac4_ims_flag) {
       ret &= AddDescriptor("SupplementalProperty",
                            "tag:dolby.com,2016:dash:virtualized_content:2016",

@@ -7,7 +7,6 @@
 #include "packager/mpd/base/mpd_notifier_util.h"
 
 #include "absl/strings/numbers.h"
-#include "packager/base/strings/string_util.h"
 #include "packager/file/file.h"
 #include "packager/mpd/base/mpd_utils.h"
 

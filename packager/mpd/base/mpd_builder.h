@@ -22,6 +22,7 @@
 #include "packager/macros.h"
 #include "packager/mpd/base/mpd_options.h"
 #include "packager/mpd/base/xml/xml_node.h"
+#include "packager/media/base/muxer.h"
 
 // TODO(rkuroiwa): For classes with |id_|, consider removing the field and let
 // the MPD (XML) generation functions take care of assigning an ID to each
@@ -56,7 +57,7 @@ class MpdBuilder {
   /// @param[out] output is an output string where the MPD gets written.
   /// @return true on success, false otherwise.
   // TODO(kqyang): Handle file IO in this class as in HLS media_playlist?
-  virtual bool ToString(std::string* output) WARN_UNUSED_RESULT;
+  [[nodiscard]] virtual bool ToString(std::string* output);
 
   /// Adjusts the fields of MediaInfo so that paths are relative to the
   /// specified MPD path.
@@ -68,7 +69,7 @@ class MpdBuilder {
 
   // Inject a |clock| that returns the current time.
   /// This is for testing.
-  void InjectClockForTesting(std::unique_ptr<base::Clock> clock) {
+  void InjectClockForTesting(std::unique_ptr<media::MuxerClock> clock) {
     clock_ = std::move(clock);
   }
 
@@ -89,17 +90,17 @@ class MpdBuilder {
 
   // Set MPD attributes common to all profiles. Uses non-zero |mpd_options_| to
   // set attributes for the MPD.
-  bool AddCommonMpdInfo(xml::XmlNode* mpd_node) WARN_UNUSED_RESULT;
+  [[nodiscard]] bool AddCommonMpdInfo(xml::XmlNode* mpd_node);
 
   // Adds 'static' MPD attributes and elements to |mpd_node|. This assumes that
   // the first child element is a Period element.
-  bool AddStaticMpdInfo(xml::XmlNode* mpd_node) WARN_UNUSED_RESULT;
+  [[nodiscard]] bool AddStaticMpdInfo(xml::XmlNode* mpd_node);
 
   // Same as AddStaticMpdInfo() but for 'dynamic' MPDs.
-  bool AddDynamicMpdInfo(xml::XmlNode* mpd_node) WARN_UNUSED_RESULT;
+  [[nodiscard]] bool AddDynamicMpdInfo(xml::XmlNode* mpd_node);
 
   // Add UTCTiming element if utc timing is provided.
-  bool AddUtcTiming(xml::XmlNode* mpd_node) WARN_UNUSED_RESULT;
+  [[nodiscard]] bool AddUtcTiming(xml::XmlNode* mpd_node);
 
   float GetStaticMpdDuration();
 
@@ -109,7 +110,7 @@ class MpdBuilder {
 
   // Gets the earliest, normalized segment timestamp. Returns true if
   // successful, false otherwise.
-  bool GetEarliestTimestamp(double* timestamp_seconds) WARN_UNUSED_RESULT;
+  [[nodiscard]] bool GetEarliestTimestamp(double* timestamp_seconds);
 
   // Update Period durations and presentation timestamps.
   void UpdatePeriodDurationAndPresentationTimestamp();
@@ -125,7 +126,7 @@ class MpdBuilder {
 
   // By default, this returns the current time. This can be injected for
   // testing.
-  std::unique_ptr<base::Clock> clock_;
+  std::unique_ptr<media::MuxerClock> clock_;
 };
 
 }  // namespace shaka

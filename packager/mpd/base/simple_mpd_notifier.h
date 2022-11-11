@@ -75,7 +75,7 @@ class SimpleMpdNotifier : public MpdNotifier {
   std::string output_path_;
   std::unique_ptr<MpdBuilder> mpd_builder_;
   bool content_protection_in_adaptation_set_ = true;
-  abls::Mutex mutex_;
+  absl::Mutex mutex_;
 
   uint32_t next_adaptation_set_id_ = 0;
   // Maps Representation ID to Representation.

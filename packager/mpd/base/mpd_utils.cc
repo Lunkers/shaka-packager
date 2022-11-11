@@ -7,12 +7,14 @@
 #include "packager/mpd/base/mpd_utils.h"
 
 #include <libxml/tree.h>
+#include <string_view>
 
+#include "absl/flags/declare.h"
 #include "absl/flags/flag.h"
 #include "absl/strings/escaping.h"
 #include "absl/strings/numbers.h"
+#include "absl/strings/str_format.h"
 #include "glog/logging.h"
-#include "packager/base/strings/string_util.h"
 #include "packager/media/base/language_utils.h"
 #include "packager/media/base/protection_system_specific_info.h"
 #include "packager/mpd/base/adaptation_set.h"
@@ -20,7 +22,8 @@
 #include "packager/mpd/base/representation.h"
 #include "packager/mpd/base/xml/scoped_xml_ptr.h"
 
-DEFINE_bool(
+ABSL_FLAG(
+    bool,
     use_legacy_vp9_codec_string,
     false,
     "Use legacy vp9 codec string 'vp9' if set to true; otherwise new style "
@@ -107,7 +110,7 @@ std::string GetCodecs(const MediaInfo& media_info) {
       // new codec strings.
       if (codec == "vp08")
         return "vp8";
-      if (FLAGS_use_legacy_vp9_codec_string) {
+      if (absl::GetFlag(FLAGS_use_legacy_vp9_codec_string)) {
         if (codec == "vp09")
           return "vp9";
       }
@@ -193,7 +196,7 @@ std::string SecondsToXmlDuration(double seconds) {
   // We need a string formatter that has at least microseconds accuracy for a
   // normal video (with duration up to 3 hours). Chrome's DoubleToString
   // implementation meets the requirement.
-  return "PT" + absl::StrFormat(seconds) + "S";
+  return absl::StrFormat("PT%dS", seconds);
 }
 
 bool GetDurationAttribute(xmlNodePtr node, float* duration) {
@@ -208,7 +211,7 @@ bool GetDurationAttribute(xmlNodePtr node, float* duration) {
 
   double duration_double_precision = 0.0;
   if (!absl::SimpleAtod(
-          reinterpret_cast<const absl::str_view>(duration_value.get()),
+          reinterpret_cast<const std::str_view>(duration_value.get()),
           &duration_double_precision)) {
     return false;
   }
@@ -236,12 +239,12 @@ bool HexToUUID(const std::string& data, std::string* uuid_format) {
   if (data.size() != kExpectedUUIDSize) {
     LOG(ERROR) << "UUID size is expected to be " << kExpectedUUIDSize
                << " but is " << data.size() << " and the data in hex is "
-               << absl::BytesToHexString(data.data(), data.size());
+               << absl::BytesToHexString(data.data());
     return false;
   }
 
   const std::string hex_encoded =
-      absl::AsciiStrToLower(base::HexEncode(data.data(), data.size()));
+      absl::AsciiStrToLower(absl::HexStringToBytes(data.data()));
   DCHECK_EQ(hex_encoded.size(), kExpectedUUIDSize * 2);
   std::string_view all(hex_encoded);
   // Note UUID has 5 parts separated with dashes.
@@ -256,15 +259,15 @@ bool HexToUUID(const std::string& data, std::string* uuid_format) {
   // 32 hexadecimal characters with 4 hyphens.
   const size_t kHumanReadableUUIDSize = 36;
   uuid_format->reserve(kHumanReadableUUIDSize);
-  first.CopyToString(uuid_format);
+  first.append(uuid_format);
   uuid_format->append("-");
-  second.AppendToString(uuid_format);
+  second.append(uuid_format);
   uuid_format->append("-");
-  third.AppendToString(uuid_format);
+  third.append(uuid_format);
   uuid_format->append("-");
-  fourth.AppendToString(uuid_format);
+  fourth.append(uuid_format);
   uuid_format->append("-");
-  fifth.AppendToString(uuid_format);
+  fifth.append(uuid_format);
   return true;
 }
 
@@ -366,12 +369,10 @@ Element GenerateCencPsshElement(const std::string& pssh) {
 // and encode it in base64.
 Element GenerateMsprProElement(const std::string& pssh) {
   std::unique_ptr<media::PsshBoxBuilder> b =
-    media::PsshBoxBuilder::ParseFromBox(
-        reinterpret_cast<const uint8_t*>(pssh.data()),
-        pssh.size()
-    );
+      media::PsshBoxBuilder::ParseFromBox(
+          reinterpret_cast<const uint8_t*>(pssh.data()), pssh.size());
 
-  const std::vector<uint8_t> *p_pssh = &b->pssh_data();
+  const std::vector<uint8_t>* p_pssh = &b->pssh_data();
   std::string base64_encoded_mspr;
   absl::Base64Escape(
       std::string_view(reinterpret_cast<const char*>(p_pssh->data()),
@@ -448,7 +449,8 @@ void AddContentProtectionElementsHelperTemplated(
       if (!entry.pssh().empty()) {
         drm_content_protection.subelements.push_back(
             GenerateCencPsshElement(entry.pssh()));
-        if(entry.uuid() == kPlayReadyUUID && protected_content.include_mspr_pro()) {
+        if (entry.uuid() == kPlayReadyUUID &&
+            protected_content.include_mspr_pro()) {
           drm_content_protection.subelements.push_back(
               GenerateMsprProElement(entry.pssh()));
           drm_content_protection.value = kContentProtectionValueMSPR20;

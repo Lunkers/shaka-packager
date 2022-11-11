@@ -6,11 +6,11 @@
 
 #include "packager/mpd/base/period.h"
 
-#include "packager/base/stl_util.h"
 #include "packager/mpd/base/adaptation_set.h"
 #include "packager/mpd/base/mpd_options.h"
 #include "packager/mpd/base/mpd_utils.h"
 #include "packager/mpd/base/xml/xml_node.h"
+#include "glog/logging.h"
 
 namespace shaka {
 namespace {
@@ -137,45 +137,45 @@ std::optional<xml::XmlNode> Period::GetXml(bool output_period_duration) {
 
   // Required for 'dynamic' MPDs.
   if (!period.SetId(id_))
-    return base::nullopt;
+    return absl::nullopt;
 
   // Required for LL-DASH MPDs.
   if (mpd_options_.mpd_params.low_latency_dash_mode) {
     // Create ServiceDescription element.
     xml::XmlNode service_description_node("ServiceDescription");
     if (!service_description_node.SetIntegerAttribute("id", id_))
-      return base::nullopt;
+      return absl::nullopt;
 
     // Insert Latency into ServiceDescription element.
     xml::XmlNode latency_node("Latency");
     uint64_t target_latency_ms =
         mpd_options_.mpd_params.target_latency_seconds * 1000;
     if (!latency_node.SetIntegerAttribute("target", target_latency_ms))
-      return base::nullopt;
+      return absl::nullopt;
     if (!service_description_node.AddChild(std::move(latency_node)))
-      return base::nullopt;
+      return absl::nullopt;
 
     // Insert ServiceDescription into Period element.
     if (!period.AddChild(std::move(service_description_node)))
-      return base::nullopt;
+      return absl::nullopt;
   }
 
   // Iterate thru AdaptationSets and add them to one big Period element.
   for (const auto& adaptation_set : adaptation_sets_) {
     auto child = adaptation_set->GetXml();
     if (!child || !period.AddChild(std::move(*child)))
-      return base::nullopt;
+      return absl::nullopt;
   }
 
   if (output_period_duration) {
     if (!period.SetStringAttribute("duration",
                                    SecondsToXmlDuration(duration_seconds_))) {
-      return base::nullopt;
+      return absl::nullopt;
     }
   } else if (mpd_options_.mpd_type == MpdType::kDynamic) {
     if (!period.SetStringAttribute(
             "start", SecondsToXmlDuration(start_time_in_seconds_))) {
-      return base::nullopt;
+      return absl::nullopt;
     }
   }
   return period;

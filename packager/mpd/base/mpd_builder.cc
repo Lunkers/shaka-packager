@@ -8,12 +8,12 @@
 
 #include <algorithm>
 #include <optional>
+#include <filesystem>
 
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_format.h"
 #include "absl/synchronization/mutex.h"
 #include "glog/logging.h"
-#include "packager/base/files/file_path.h"
 #include "packager/base/time/default_clock.h"
 #include "packager/base/time/time.h"
 #include "packager/media/base/rcheck.h"

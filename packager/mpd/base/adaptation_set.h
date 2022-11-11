@@ -109,7 +109,7 @@ class AdaptationSet {
   /// and ContentProtection elements.
   /// @return On success returns a non-NULL scoped_xml_ptr. Otherwise returns a
   ///         NULL scoped_xml_ptr.
-  std::Optional<xml::XmlNode> GetXml();
+  std::optional<xml::XmlNode> GetXml();
 
   /// Forces the (sub)segmentAlignment field to be set to @a segment_alignment.
   /// Use this if you are certain that the (sub)segments are alinged/unaligned
@@ -248,7 +248,7 @@ class AdaptationSet {
 
   uint32_t* const representation_counter_;
 
-  std::Optional<uint32_t> id_;
+  std::optional<uint32_t> id_;
   const std::string language_;
   const MpdOptions& mpd_options_;
 
