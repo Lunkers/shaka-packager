@@ -1,5 +1,3 @@
-
-
 add_proto_library(media_info_proto STATIC
     media_info.proto
 )

@@ -1,0 +1,13 @@
+{
+    "files.associations": {
+        "chrono": "cpp",
+        "bitset": "cpp",
+        "forward_list": "cpp",
+        "future": "cpp",
+        "list": "cpp",
+        "regex": "cpp",
+        "scoped_allocator": "cpp",
+        "functional": "cpp",
+        "*.inc": "cpp"
+    }
+}
