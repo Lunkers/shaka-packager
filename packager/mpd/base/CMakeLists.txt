@@ -6,6 +6,10 @@ add_library(manifest_base STATIC
     bandwidth_estimator.cc
 )
 
+target_link_libraries(manifest_base
+    glog
+)
+
 add_library(mpd_builder STATIC
     adaptation_set.cc
     content_protection_element.cc
@@ -21,7 +25,6 @@ add_library(mpd_builder STATIC
 )
 
 
-# TODO: add libraries (absl, etc)
 target_link_libraries(mpd_builder
     file
     media_base
